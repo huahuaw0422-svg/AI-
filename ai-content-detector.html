@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 内容检测工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 1000px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title .icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            color: #fff;
+            font-size: 1rem;
+            resize: vertical;
+            font-family: inherit;
+            line-height: 1.6;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #00d9ff;
+            box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        }
+
+        textarea::placeholder {
+            color: #666;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 217, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 结果区域 */
+        .result-section {
+            margin-top: 30px;
+        }
+
+        .probability-display {
+            text-align: center;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+
+        .probability-circle {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .probability-circle svg {
+            transform: rotate(-90deg);
+        }
+
+        .probability-circle .bg-circle {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 12;
+        }
+
+        .probability-circle .progress-circle {
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s ease;
+        }
+
+        .probability-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .probability-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .probability-label {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .verdict {
+            font-size: 1.3rem;
+            font-weight: 600;
+            padding: 10px 25px;
+            border-radius: 25px;
+            display: inline-block;
+        }
+
+        .verdict.ai {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+
+        .verdict.human {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .verdict.uncertain {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        /* 维度分析 */
+        .dimensions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .dimension-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .dimension-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .dimension-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .dimension-score {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .dimension-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .dimension-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+
+        .dimension-desc {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        /* 特征高亮 */
+        .highlighted-text {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+
+        .highlighted-text::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .highlighted-text::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .highlighted-text::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .highlight {
+            padding: 2px 4px;
+            border-radius: 4px;
+            cursor: help;
+        }
+
+        .highlight-repetitive {
+            background: rgba(255, 107, 107, 0.3);
+            border-bottom: 2px solid #ff6b6b;
+        }
+
+        .highlight-formal {
+            background: rgba(255, 193, 7, 0.3);
+            border-bottom: 2px solid #ffc107;
+        }
+
+        .highlight-simple {
+            background: rgba(156, 39, 176, 0.3);
+            border-bottom: 2px solid #9c27b0;
+        }
+
+        .highlight-pattern {
+            background: rgba(0, 217, 255, 0.3);
+            border-bottom: 2px solid #00d9ff;
+        }
+
+        .highlight-consistent {
+            background: rgba(255, 152, 0, 0.3);
+            border-bottom: 2px solid #ff9800;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        /* 判断依据 */
+        .evidence-list {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .evidence-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .evidence-item:last-child {
+            border-bottom: none;
+        }
+
+        .evidence-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .evidence-icon.ai {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .evidence-icon.human {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .evidence-text {
+            flex: 1;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* 测试案例 */
+        .test-cases-section {
+            margin-top: 40px;
+        }
+
+        .test-cases-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 1000px) {
+            .test-cases-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .test-case {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .test-case:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 217, 255, 0.3);
+        }
+
+        .test-case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .test-case-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .test-case-label {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .test-case-label.ai {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .test-case-label.human {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .test-case-preview {
+            font-size: 0.85rem;
+            color: #888;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* 技术原理 */
+        .tech-principle {
+            margin-top: 40px;
+        }
+
+        .principle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 1000px) {
+            .principle-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .principle-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .principle-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #00d9ff;
+        }
+
+        .principle-card p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #aaa;
+        }
+
+        /* 局限性说明 */
+        .limitations {
+            margin-top: 40px;
+        }
+
+        .limitations-content {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .limitations-content h4 {
+            color: #ffc107;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .limitations-list {
+            list-style: none;
+        }
+
+        .limitations-list li {
+            padding: 10px 0;
+            padding-left: 25px;
+            position: relative;
+            font-size: 0.9rem;
+            color: #ccc;
+            line-height: 1.5;
+        }
+
+        .limitations-list li::before {
+            content: '⚠';
+            position: absolute;
+            left: 0;
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d9ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 隐藏结果 */
+        .result-content {
+            display: none;
+        }
+
+        .result-content.active {
+            display: block;
+        }
+
+        /* 统计信息 */
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00d9ff;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 AI 内容检测工具</h1>
+            <p class="subtitle">基于多维度分析的文本检测系统 | 识别人工智能生成内容</p>
+        </header>
+
+        <div class="main-content">
+            <!-- 输入区域 -->
+            <div class="card">
+                <h3 class="card-title">
+                    <span class="icon">📝</span>
+                    文本输入
+                </h3>
+                <textarea id="inputText" placeholder="请粘贴需要检测的文本内容...
+
+支持任意类型的文本：
+• 学术论文片段
+• 新闻报道
+• 博客文章
+• 产品描述
+• 社交媒体内容
+
+建议输入至少 100 字以获得更准确的检测结果"></textarea>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="analyzeText()">开始检测</button>
+                    <button class="btn-secondary" onclick="clearInput()">清空内容</button>
+                </div>
+            </div>
+
+            <!-- 结果区域 -->
+            <div class="card">
+                <h3 class="card-title">
+                    <span class="icon">📊</span>
+                    检测结果
+                </h3>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>正在分析文本特征...</p>
+                </div>
+
+                <div class="result-content" id="resultContent">
+                    <!-- 概率显示 -->
+                    <div class="probability-display">
+                        <div class="probability-circle">
+                            <svg width="180" height="180" viewBox="0 0 180 180">
+                                <circle class="bg-circle" cx="90" cy="90" r="78"></circle>
+                                <circle class="progress-circle" id="progressCircle" cx="90" cy="90" r="78" 
+                                    stroke="url(#gradient)" stroke-dasharray="490" stroke-dashoffset="490"></circle>
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" style="stop-color:#00d9ff"/>
+                                        <stop offset="100%" style="stop-color:#00ff88"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="probability-value">
+                                <div class="probability-number" id="probabilityNumber">0%</div>
+                                <div class="probability-label">AI 生成概率</div>
+                            </div>
+                        </div>
+                        <div class="verdict" id="verdict">待检测</div>
+                    </div>
+
+                    <!-- 统计信息 -->
+                    <div class="stats-row" id="statsRow">
+                        <div class="stat-item">
+                            <div class="stat-value" id="wordCount">0</div>
+                            <div class="stat-label">总字数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="sentenceCount">0</div>
+                            <div class="stat-label">句子数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="avgSentenceLen">0</div>
+                            <div class="stat-label">平均句长</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="vocabDiversity">0</div>
+                            <div class="stat-label">词汇多样性</div>
+                        </div>
+                    </div>
+
+                    <!-- 维度分析 -->
+                    <h4 style="margin-bottom: 15px; font-size: 1rem;">多维度分析</h4>
+                    <div class="dimensions-grid" id="dimensionsGrid">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 特征高亮区域 -->
+        <div class="card result-content" id="highlightSection" style="margin-top: 30px;">
+            <h3 class="card-title">
+                <span class="icon">✨</span>
+                特征高亮
+            </h3>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(255, 107, 107, 0.5);"></div>
+                    <span>重复模式</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(255, 193, 7, 0.5);"></div>
+                    <span>正式用语</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(156, 39, 176, 0.5);"></div>
+                    <span>简单句式</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(0, 217, 255, 0.5);"></div>
+                    <span>过渡词模式</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(255, 152, 0, 0.5);"></div>
+                    <span>一致性特征</span>
+                </div>
+            </div>
+            <div class="highlighted-text" id="highlightedText"></div>
+        </div>
+
+        <!-- 判断依据 -->
+        <div class="card result-content" id="evidenceSection" style="margin-top: 30px;">
+            <h3 class="card-title">
+                <span class="icon">📋</span>
+                判断依据
+            </h3>
+            <div class="evidence-list" id="evidenceList">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 测试案例 -->
+        <div class="test-cases-section card" style="margin-top: 40px;">
+            <h3 class="card-title">
+                <span class="icon">🧪</span>
+                测试案例（点击快速测试）
+            </h3>
+            <div class="test-cases-grid" id="testCasesGrid">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 技术原理 -->
+        <div class="tech-principle card" style="margin-top: 40px;">
+            <h3 class="card-title">
+                <span class="icon">🔬</span>
+                技术原理说明
+            </h3>
+            <div class="principle-grid">
+                <div class="principle-card">
+                    <h4>语言模式分析</h4>
+                    <p>AI 生成的文本往往具有特定的语言模式，如过渡词的高频使用（"首先"、"其次"、"总之"）、句式结构的规律性、以及情感表达的一致性。本工具通过统计这些模式的出现频率来判断文本来源。</p>
+                </div>
+                <div class="principle-card">
+                    <h4>词汇多样性检测</h4>
+                    <p>使用 Type-Token Ratio (TTR) 计算词汇多样性。AI 文本通常词汇多样性较低，倾向于使用常见词汇组合。同时检测词汇选择的"安全性"——AI 倾向避免使用非常规或创造性词汇。</p>
+                </div>
+                <div class="principle-card">
+                    <h4>句式特征识别</h4>
+                    <p>分析句子长度分布、复杂度变化、段落结构等特征。AI 生成的文本往往具有更均匀的句长分布、更规律的段落长度，缺少人类写作中的自然波动和风格变化。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 局限性说明 -->
+        <div class="limitations card" style="margin-top: 40px;">
+            <div class="limitations-content">
+                <h4>⚠️ 重要声明与局限性</h4>
+                <ul class="limitations-list">
+                    <li>本工具基于统计特征进行分析，无法 100% 准确判断文本来源。经过人工润色或混合编辑的文本可能产生误判。</li>
+                    <li>检测结果仅供参考，不应作为判断文本来源的唯一依据。任何重要决策应结合人工审核。</li>
+                    <li>AI 模型不断进化，新模型可能生成更具人类特征的文本，本工具的检测准确率会随时间变化。</li>
+                    <li>短文本（少于 100 字）的检测结果可靠性较低，建议分析更长的文本段落。</li>
+                    <li>某些专业领域或特定风格的文本可能天生具有 AI 文本的特征，导致假阳性结果。</li>
+                    <li>人类写作也可能呈现出 AI 文本的某些特征，特别是经过严格编辑的正式文档。</li>
+                </ul>
+            </div>
+        </div>
+
+        <footer>
+            <p>本工具仅供学习和研究使用 | 检测结果仅供参考，不构成任何法律或学术判断依据</p>
+        </footer>
+    </div>
+
+    <script>
+        // 测试案例数据
+        const testCases = [
+            {
+                title: "AI 生成：科技新闻",
+                label: "AI",
+                text: `人工智能技术的发展正在深刻改变着我们的生活方式。首先，在医疗领域，AI辅助诊断系统已经能够帮助医生更准确地识别疾病。其次，在教育领域，智能化的学习平台可以根据学生的学习进度提供个性化的教学内容。此外，在交通领域，自动驾驶技术的进步为未来的出行方式带来了新的可能性。总的来说，人工智能技术的应用前景十分广阔，它将继续推动各个行业的创新与发展。`
+            },
+            {
+                title: "人工写作：个人博客",
+                label: "HUMAN",
+                text: `昨天发生了一件让我哭笑不得的事。早上赶地铁的时候，耳机线不知道怎么就缠成了麻花——明明出门前还理得好好的！我就在那儿傻站着，跟耳机线较劲了五分钟。旁边一位大爷看不下去了，笑着问我："姑娘，跟耳机打架呢？"哈哈，瞬间社死现场...不过也因此聊了几句，大爷退休前居然是做程序员的老前辈，跟我说了好多以前穿孔卡片编程的趣事。这世界还真是奇妙，耳机打结也能认识新朋友。`
+            },
+            {
+                title: "AI 生成：产品介绍",
+                label: "AI",
+                text: `本产品采用先进的智能算法，能够为用户提供高效便捷的使用体验。产品具有以下特点：第一，操作简单，用户界面友好；第二，功能强大，能够满足不同用户的需求；第三，性能稳定，经过严格的测试验证。此外，我们还提供完善的售后服务，确保用户在使用过程中能够得到及时的支持。总而言之，本产品是您理想的选择，欢迎广大用户选购体验。`
+            },
+            {
+                title: "人工写作：美食评论",
+                label: "HUMAN",
+                text: `这家店的红烧肉...怎么说呢，吃第一口我就想骂人——怎么会这么好吃！肥肉入口即化一点都不腻，瘦肉炖得软烂但又不失嚼劲。酱汁是那种浓稠到刚刚好的程度，拌饭简直是犯罪。老板说他家用的是黑猪肉，炖了整整4个小时。啧啧，怪不得。环境嘛，就是个很普通的小馆子，几张桌子，墙上贴着顾客写的便利贴。但冲这味道，值得专门跑一趟。ps：一定要早去，十二点以后就开始排队了。`
+            },
+            {
+                title: "AI 生成：学术摘要",
+                label: "AI",
+                text: `本研究旨在探讨机器学习在自然语言处理领域的应用。研究方法方面，本文采用了深度学习模型对大规模文本数据进行分析。实验结果表明，所提出的方法在多个基准数据集上取得了显著的性能提升。具体而言，在文本分类任务中，准确率达到了95.6%；在命名实体识别任务中，F1值达到了92.3%。综上所述，本研究为相关领域的发展提供了有价值的参考，未来工作将进一步探索模型的优化方向。`
+            },
+            {
+                title: "人工写作：旅行日记",
+                label: "HUMAN",
+                text: `凌晨四点的泰山，冷到怀疑人生。裹着租来的军大衣，缩在山角下等日出，脑子里只有一句话：谁让我要逞强说想看日出的？？？但！当第一缕阳光从云层里钻出来的那一刻——真的，所有的怨念都烟消云散了。金色的光从地平线一路往上爬，把云海染成了橙红色。旁边有个外国小哥激动得直喊"Oh my god"，他女朋友在旁边笑着帮他拍照。我在旁边偷偷蹭了个合影（开玩笑的，只是角度刚好）。下山的路上，腿抖得像面条。明年...明年绝对不来了！...嗯，可能还是会来。`
+            },
+            {
+                title: "AI 生成：职场建议",
+                label: "AI",
+                text: `在职场中获得成功需要掌握几个关键要素。首先，要具备良好的沟通能力，能够清晰地表达自己的想法和观点。其次，要培养团队合作精神，学会与同事协作完成工作任务。另外，持续学习也是非常重要的，要不断更新自己的知识和技能。同时，保持积极的工作态度，主动承担责任，展现自己的专业能力。最后，建立良好的人际关系网络，这对于职业发展具有重要价值。综上所述，通过以上几点的努力，相信您一定能够在职场中取得成功。`
+            },
+            {
+                title: "人工写作：学生吐槽",
+                label: "HUMAN",
+                text: `我发誓期末周真的会把人逼疯。三天内要交两篇论文还要准备一门闭卷考试，教授们是不是串通好的？？？最离谱的是近代史，老师上课说的重点跟我复习的完全不！一！样！翻开卷子的那一刻我整个人都裂开了。旁边寝室的老王昨晚通宵背书，今天早上睡过头直接错过了考试哈哈哈哈哈（虽然很惨但我真的忍不住想笑）。现在图书馆全是人，连地板上都坐着人在背书。我已经放弃治疗了，在此许愿：各科全过，哪怕60分也行啊啊啊啊啊！！！`
+            },
+            {
+                title: "AI 生成：健康科普",
+                label: "AI",
+                text: `保持健康的生活方式对于每个人都非常重要。以下是一些建议：第一，保持规律的作息时间，每天保证7-8小时的睡眠；第二，坚持适量的运动，每周至少进行150分钟的中等强度运动；第三，保持均衡的饮食，多吃蔬菜水果，减少高脂肪高糖食物的摄入；第四，保持良好的心态，学会调节情绪和压力。此外，定期进行健康检查也是预防疾病的重要措施。通过以上方法，可以有效地维护身体健康，提高生活质量。`
+            },
+            {
+                title: "人工写作：怀旧散文",
+                label: "HUMAN",
+                text: `外婆家的那棵柿子树，今年又结果了没有？小时候每年秋天都要回去一趟，站在树下仰着脖子看那些橙红色的小灯笼。外婆总说"别摘，还不到时候"，可我哪里等得了。趁着大人们午睡，悄悄爬上去摘一个，咬一口——涩的！然后呲牙咧嘴地吐出来。外婆醒了看见我嘴边沾着柿子皮，笑得直不起腰。后来上中学了，去得少了。再后来，外婆走了，那棵树还在不在，我也不知道了。昨天在水果店看到柿子，突然想起那个涩涩的味道，还有外婆笑起来眼角的皱纹。`
+            }
+        ];
+
+        // AI 特征词汇库
+        const aiPatterns = {
+            transitionWords: ['首先', '其次', '再次', '此外', '另外', '最后', '综上所述', '总而言之', '总的来说', '具体而言', '换而言之', '简而言之'],
+            formalPhrases: ['具有重要意义', '发挥着重要作用', '得到了广泛应用', '取得了显著成效', '具有以下特点', '具有以下优势', '提供了有力支持', '奠定了坚实基础'],
+            repetitiveStructures: ['第一，', '第二，', '第三，', '一方面', '另一方面'],
+            vagueWords: ['相关', '一定的', '相应的', '适当的', '必要的', '充分的'],
+            conclusionPhrases: ['总之', '综上所述', '总而言之', '概括来说', '总结一下']
+        };
+
+        // 人类特征词汇库
+        const humanPatterns = {
+            colloquialisms: ['哈哈', '嗯', '啊', '嘛', '吧', '呢', '哎', '呀', '啧', '呃', 'emmm', '就是', '然后', '其实'],
+            emotions: ['开心', '难过', '生气', '激动', '感动', '无语', '崩溃', '开心死了', '笑死', '绝了', '裂开', '社死'],
+            personalPronouns: ['我', '我觉', '我认为', '我觉得', '我感觉', '在我看来', '说实话', '老实说'],
+            informalPunctuation: ['！', '？', '...', '～', '！！！', '？？？', '。。。']
+        };
+
+        // 初始化测试案例
+        function initTestCases() {
+            const grid = document.getElementById('testCasesGrid');
+            grid.innerHTML = testCases.map((tc, index) => `
+                <div class="test-case" onclick="loadTestCase(${index})">
+                    <div class="test-case-header">
+                        <span class="test-case-title">${tc.title}</span>
+                        <span class="test-case-label ${tc.label.toLowerCase()}">${tc.label === 'AI' ? 'AI 生成' : '人工写作'}</span>
+                    </div>
+                    <div class="test-case-preview">${tc.text.substring(0, 100)}...</div>
+                </div>
+            `).join('');
+        }
+
+        // 加载测试案例
+        function loadTestCase(index) {
+            document.getElementById('inputText').value = testCases[index].text;
+            analyzeText();
+        }
+
+        // 清空输入
+        function clearInput() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('resultContent').classList.remove('active');
+            document.getElementById('highlightSection').classList.remove('active');
+            document.getElementById('evidenceSection').classList.remove('active');
+        }
+
+        // 主分析函数
+        function analyzeText() {
+            const text = document.getElementById('inputText').value.trim();
+            
+            if (text.length < 50) {
+                alert('请输入至少 50 个字符的文本进行分析');
+                return;
+            }
+
+            // 显示加载动画
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('resultContent').classList.remove('active');
+            document.getElementById('highlightSection').classList.remove('active');
+            document.getElementById('evidenceSection').classList.remove('active');
+
+            setTimeout(() => {
+                const result = performAnalysis(text);
+                displayResults(result, text);
+            }, 1500);
+        }
+
+        // 执行分析
+        function performAnalysis(text) {
+            const sentences = extractSentences(text);
+            const words = extractWords(text);
+            
+            // 计算各维度分数
+            const languagePatternScore = analyzeLanguagePatterns(text, sentences);
+            const vocabDiversityScore = analyzeVocabDiversity(words, text);
+            const sentenceFeatureScore = analyzeSentenceFeatures(sentences);
+            const emotionalScore = analyzeEmotionalExpression(text);
+            const consistencyScore = analyzeConsistency(text, sentences);
+
+            // 计算综合 AI 概率
+            const weights = {
+                languagePattern: 0.25,
+                vocabDiversity: 0.25,
+                sentenceFeature: 0.20,
+                emotional: 0.15,
+                consistency: 0.15
+            };
+
+            const aiProbability = (
+                languagePatternScore * weights.languagePattern +
+                vocabDiversityScore * weights.vocabDiversity +
+                sentenceFeatureScore * weights.sentenceFeature +
+                emotional * weights.emotional +
+                consistencyScore * weights.consistency
+            );
+
+            // 收集证据
+            const evidence = collectEvidence(text, sentences, words, {
+                languagePatternScore,
+                vocabDiversityScore,
+                sentenceFeatureScore,
+                emotionalScore: emotional,
+                consistencyScore
+            });
+
+            return {
+                aiProbability: Math.round(aiProbability),
+                stats: {
+                    wordCount: text.length,
+                    sentenceCount: sentences.length,
+                    avgSentenceLen: Math.round(text.length / Math.max(sentences.length, 1)),
+                    vocabDiversity: calculateTTR(words)
+                },
+                dimensions: [
+                    {
+                        name: '语言模式',
+                        score: languagePatternScore,
+                        desc: languagePatternScore > 60 ? '检测到大量 AI 典型语言模式' : '语言模式较为自然多样',
+                        color: getScoreColor(languagePatternScore)
+                    },
+                    {
+                        name: '词汇多样性',
+                        score: vocabDiversityScore,
+                        desc: vocabDiversityScore > 60 ? '词汇选择较为单一，倾向常见词汇' : '词汇丰富多样，包含个性化表达',
+                        color: getScoreColor(vocabDiversityScore)
+                    },
+                    {
+                        name: '句式特征',
+                        score: sentenceFeatureScore,
+                        desc: sentenceFeatureScore > 60 ? '句式结构规律性强，缺少变化' : '句式变化自然，有个人风格',
+                        color: getScoreColor(sentenceFeatureScore)
+                    },
+                    {
+                        name: '情感表达',
+                        score: emotional,
+                        desc: emotional > 60 ? '情感表达克制，语气正式' : '情感表达自然，有个性化表达',
+                        color: getScoreColor(emotional)
+                    },
+                    {
+                        name: '文本一致性',
+                        score: consistencyScore,
+                        desc: consistencyScore > 60 ? '整体风格过于统一，缺少波动' : '风格有自然起伏和个人特色',
+                        color: getScoreColor(consistencyScore)
+                    }
+                ],
+                evidence,
+                highlights: generateHighlights(text, sentences)
+            };
+        }
+
+        // 提取句子
+        function extractSentences(text) {
+            return text.split(/[。！？\n]+/).filter(s => s.trim().length > 0);
+        }
+
+        // 提取词语（简化版）
+        function extractWords(text) {
+            // 简单的分词，按字符和标点分割
+            return text.split(/[\s，。！？、；：""''（）【】《》\-\+\*\/\\]/)
+                      .filter(w => w.length > 0);
+        }
+
+        // 分析语言模式
+        function analyzeLanguagePatterns(text, sentences) {
+            let score = 50; // 基准分
+
+            // 检查过渡词
+            let transitionCount = 0;
+            aiPatterns.transitionWords.forEach(word => {
+                const regex = new RegExp(word, 'g');
+                const matches = text.match(regex);
+                if (matches) transitionCount += matches.length;
+            });
+
+            // 过渡词过多增加 AI 可能性
+            const transitionDensity = transitionCount / sentences.length;
+            if (transitionDensity > 0.5) score += 15;
+            else if (transitionDensity > 0.3) score += 8;
+
+            // 检查正式短语
+            let formalCount = 0;
+            aiPatterns.formalPhrases.forEach(phrase => {
+                if (text.includes(phrase)) formalCount++;
+            });
+            score += Math.min(formalCount * 5, 20);
+
+            // 检查重复结构
+            let structureCount = 0;
+            aiPatterns.repetitiveStructures.forEach(struct => {
+                const regex = new RegExp(struct.replace('，', '[，,]'), 'g');
+                const matches = text.match(regex);
+                if (matches) structureCount += matches.length;
+            });
+            if (structureCount >= 3) score += 10;
+
+            // 检查总结性短语
+            aiPatterns.conclusionPhrases.forEach(phrase => {
+                if (text.includes(phrase)) score += 5;
+            });
+
+            return Math.min(100, Math.max(0, score));
+        }
+
+        // 分析词汇多样性
+        function analyzeVocabDiversity(words, text) {
+            let score = 50;
+
+            // 计算 TTR
+            const ttr = calculateTTR(words);
+            
+            // TTR 较低表示词汇多样性低，AI 可能性高
+            if (ttr < 0.3) score += 25;
+            else if (ttr < 0.4) score += 15;
+            else if (ttr < 0.5) score += 5;
+            else if (ttr > 0.6) score -= 10;
+
+            // 检查模糊词汇
+            let vagueCount = 0;
+            aiPatterns.vagueWords.forEach(word => {
+                const regex = new RegExp(word, 'g');
+                const matches = text.match(regex);
+                if (matches) vagueCount += matches.length;
+            });
+            score += Math.min(vagueCount * 3, 15);
+
+            // 检查口语化表达（人类特征）
+            let colloquialCount = 0;
+            humanPatterns.colloquialisms.forEach(word => {
+                const regex = new RegExp(word, 'g');
+                const matches = text.match(regex);
+                if (matches) colloquialCount += matches.length;
+            });
+            score -= Math.min(colloquialCount * 5, 25);
+
+            return Math.min(100, Math.max(0, score));
+        }
+
+        // 计算 Type-Token Ratio
+        function calculateTTR(words) {
+            if (words.length === 0) return 0;
+            const uniqueWords = new Set(words);
+            return uniqueWords.size / words.length;
+        }
+
+        // 分析句式特征
+        function analyzeSentenceFeatures(sentences) {
+            let score = 50;
+
+            if (sentences.length < 2) return score;
+
+            // 计算句子长度标准差
+            const lengths = sentences.map(s => s.length);
+            const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+            const variance = lengths.reduce((sum, len) => sum + Math.pow(len - avg, 2), 0) / lengths.length;
+            const stdDev = Math.sqrt(variance);
+
+            // 标准差较小表示句长过于一致，AI 可能性高
+            if (stdDev < 5) score += 20;
+            else if (stdDev < 10) score += 10;
+            else if (stdDev > 25) score -= 10;
+
+            // 检查句子结构重复性
+            const sentenceStarts = sentences.map(s => s.substring(0, Math.min(4, s.length)));
+            const uniqueStarts = new Set(sentenceStarts);
+            const startVariety = uniqueStarts.size / sentences.length;
+
+            if (startVariety < 0.5) score += 15;
+            else if (startVariety > 0.8) score -= 10;
+
+            // 检查段落结构
+            const hasNumberedStructure = sentences.some(s => /^[一二三四五六七八九十第一第二第三]/.test(s.trim()));
+            if (hasNumberedStructure) score += 10;
+
+            return Math.min(100, Math.max(0, score));
+        }
+
+        // 分析情感表达
+        function analyzeEmotionalExpression(text) {
+            let score = 50;
+
+            // 检查情感词汇（人类特征）
+            let emotionCount = 0;
+            humanPatterns.emotions.forEach(word => {
+                if (text.includes(word)) emotionCount++;
+            });
+            score -= Math.min(emotionCount * 8, 30);
+
+            // 检查个人代词（人类特征）
+            let pronounCount = 0;
+            humanPatterns.personalPronouns.forEach(word => {
+                const regex = new RegExp(word, 'g');
+                const matches = text.match(regex);
+                if (matches) pronounCount += matches.length;
+            });
+            score -= Math.min(pronounCount * 4, 20);
+
+            // 检查感叹号和问号（人类倾向更多使用）
+            const exclamations = (text.match(/[！？]/g) || []).length;
+            const textLen = text.length;
+            const punctuationRatio = exclamations / textLen * 100;
+            
+            if (punctuationRatio > 2) score -= 15;
+            else if (punctuationRatio > 1) score -= 8;
+
+            // 检查省略号和波浪号（人类特征）
+            if (text.includes('...') || text.includes('～') || text.includes('。。。')) {
+                score -= 10;
+            }
+
+            // 检查过于正式的情感表达（AI特征）
+            const formalEmotions = ['值得关注的是', '令人欣慰的是', '令人担忧的是'];
+            formalEmotions.forEach(phrase => {
+                if (text.includes(phrase)) score += 8;
+            });
+
+            return Math.min(100, Math.max(0, score));
+        }
+
+        // 分析一致性
+        function analyzeConsistency(text, sentences) {
+            let score = 50;
+
+            // 检查人称一致性变化（人类可能更不一致）
+            const firstPerson = (text.match(/我[是谁在的觉得认为]/g) || []).length;
+            const thirdPerson = (text.match(/他|她|它/g) || []).length;
+            
+            if (firstPerson > 0 && thirdPerson > 0 && Math.abs(firstPerson - thirdPerson) > 3) {
+                score -= 10; // 人称混用，人类特征
+            }
+
+            // 检查语调一致性
+            const formalIndicators = ['因此', '所以', '然而', '但是', '而且', '并且'].filter(w => text.includes(w)).length;
+            const informalIndicators = ['哈哈', '嗯', '啊', '嘛'].filter(w => text.includes(w)).length;
+
+            if (formalIndicators > 0 && informalIndicators > 0) {
+                score -= 15; // 混合语调，人类特征
+            } else if (formalIndicators > 3) {
+                score += 10; // 过于正式，AI特征
+            }
+
+            // 检查段落长度一致性
+            if (sentences.length >= 3) {
+                const lengths = sentences.map(s => s.length);
+                const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+                const withinRange = lengths.filter(l => Math.abs(l - avg) < avg * 0.5).length;
+                const consistencyRatio = withinRange / sentences.length;
+
+                if (consistencyRatio > 0.8) score += 15; // 过于一致
+            }
+
+            return Math.min(100, Math.max(0, score));
+        }
+
+        // 收集证据
+        function collectEvidence(text, sentences, words, scores) {
+            const evidence = [];
+
+            // AI 证据
+            if (scores.languagePatternScore > 60) {
+                const foundTransitions = aiPatterns.transitionWords.filter(w => text.includes(w));
+                if (foundTransitions.length > 0) {
+                    evidence.push({
+                        type: 'ai',
+                        text: `检测到 ${foundTransitions.length} 个 AI 典型过渡词：${foundTransitions.slice(0, 3).join('、')}${foundTransitions.length > 3 ? '等' : ''}`
+                    });
+                }
+            }
+
+            if (scores.vocabDiversityScore > 60) {
+                evidence.push({
+                    type: 'ai',
+                    text: `词汇多样性较低（TTR: ${calculateTTR(words).toFixed(2)}），倾向使用常见词汇组合`
+                });
+            }
+
+            if (scores.sentenceFeatureScore > 60) {
+                const numberedSentences = sentences.filter(s => /^[一二三四五六七八九十第一第二第三]/.test(s.trim()));
+                if (numberedSentences.length > 0) {
+                    evidence.push({
+                        type: 'ai',
+                        text: `检测到 ${numberedSentences.length} 处编号式句子结构，这是 AI 组织信息的典型方式`
+                    });
+                }
+            }
+
+            // 人类证据
+            if (scores.emotionalScore < 40) {
+                const foundEmotions = humanPatterns.emotions.filter(w => text.includes(w));
+                if (foundEmotions.length > 0) {
+                    evidence.push({
+                        type: 'human',
+                        text: `发现 ${foundEmotions.length} 个情感表达词汇：${foundEmotions.slice(0, 3).join('、')}${foundEmotions.length > 3 ? '等' : ''}，体现真实情感`
+                    });
+                }
+            }
+
+            const foundColloquial = humanPatterns.colloquialisms.filter(w => text.includes(w));
+            if (foundColloquial.length > 2) {
+                evidence.push({
+                    type: 'human',
+                    text: `检测到口语化表达：${foundColloquial.slice(0, 3).join('、')}${foundColloquial.length > 3 ? '等' : ''}，体现自然语言风格`
+                });
+            }
+
+            const exclamations = (text.match(/[！？]{2,}/g) || []);
+            if (exclamations.length > 0) {
+                evidence.push({
+                    type: 'human',
+                    text: `检测到 ${exclamations.length} 处连续感叹或问号，这是人类表达情感的特征`
+                });
+            }
+
+            return evidence;
+        }
+
+        // 生成高亮文本
+        function generateHighlights(text, sentences) {
+            let highlightedText = text;
+            const highlights = [];
+
+            // 高亮过渡词
+            aiPatterns.transitionWords.forEach(word => {
+                if (highlightedText.includes(word)) {
+                    highlights.push({ text: word, type: 'pattern' });
+                }
+            });
+
+            // 高亮正式短语
+            aiPatterns.formalPhrases.forEach(phrase => {
+                if (highlightedText.includes(phrase)) {
+                    highlights.push({ text: phrase, type: 'formal' });
+                }
+            });
+
+            // 高亮重复结构
+            aiPatterns.repetitiveStructures.forEach(struct => {
+                const regex = new RegExp(struct.replace('，', '[，,]?'), 'g');
+                if (regex.test(highlightedText)) {
+                    highlights.push({ text: struct, type: 'repetitive' });
+                }
+            });
+
+            // 高亮情感词
+            humanPatterns.emotions.forEach(word => {
+                if (highlightedText.includes(word)) {
+                    highlights.push({ text: word, type: 'human-emotion' });
+                }
+            });
+
+            return highlights;
+        }
+
+        // 显示结果
+        function displayResults(result, originalText) {
+            document.getElementById('loading').classList.remove('active');
+            document.getElementById('resultContent').classList.add('active');
+            document.getElementById('highlightSection').classList.add('active');
+            document.getElementById('evidenceSection').classList.add('active');
+
+            // 更新概率圆环
+            const probability = result.aiProbability;
+            const circumference = 2 * Math.PI * 78;
+            const offset = circumference - (probability / 100) * circumference;
+            
+            document.getElementById('progressCircle').style.strokeDashoffset = offset;
+            document.getElementById('probabilityNumber').textContent = probability + '%';
+
+            // 更新判定结果
+            const verdictEl = document.getElementById('verdict');
+            if (probability >= 70) {
+                verdictEl.textContent = '高度疑似 AI 生成';
+                verdictEl.className = 'verdict ai';
+            } else if (probability >= 40) {
+                verdictEl.textContent = '难以确定';
+                verdictEl.className = 'verdict uncertain';
+            } else {
+                verdictEl.textContent = '倾向人工写作';
+                verdictEl.className = 'verdict human';
+            }
+
+            // 更新统计信息
+            document.getElementById('wordCount').textContent = result.stats.wordCount;
+            document.getElementById('sentenceCount').textContent = result.stats.sentenceCount;
+            document.getElementById('avgSentenceLen').textContent = result.stats.avgSentenceLen;
+            document.getElementById('vocabDiversity').textContent = (result.stats.vocabDiversity * 100).toFixed(0) + '%';
+
+            // 更新维度分析
+            const dimensionsGrid = document.getElementById('dimensionsGrid');
+            dimensionsGrid.innerHTML = result.dimensions.map(dim => `
+                <div class="dimension-card">
+                    <div class="dimension-header">
+                        <span class="dimension-name">${dim.name}</span>
+                        <span class="dimension-score" style="color: ${dim.color}">${dim.score}%</span>
+                    </div>
+                    <div class="dimension-bar">
+                        <div class="dimension-bar-fill" style="width: ${dim.score}%; background: ${dim.color}"></div>
+                    </div>
+                    <div class="dimension-desc">${dim.desc}</div>
+                </div>
+            `).join('');
+
+            // 更新高亮文本
+            displayHighlightedText(originalText);
+
+            // 更新证据列表
+            const evidenceList = document.getElementById('evidenceList');
+            evidenceList.innerHTML = result.evidence.map(ev => `
+                <div class="evidence-item">
+                    <div class="evidence-icon ${ev.type}">${ev.type === 'ai' ? '🤖' : '👤'}</div>
+                    <div class="evidence-text">${ev.text}</div>
+                </div>
+            `).join('');
+        }
+
+        // 显示高亮文本
+        function displayHighlightedText(text) {
+            let highlighted = text;
+
+            // 为各种特征添加高亮
+            // 过渡词高亮
+            aiPatterns.transitionWords.forEach(word => {
+                const regex = new RegExp(word, 'g');
+                highlighted = highlighted.replace(regex, `<span class="highlight highlight-pattern" title="AI过渡词">${word}</span>`);
+            });
+
+            // 正式短语高亮
+            aiPatterns.formalPhrases.forEach(phrase => {
+                highlighted = highlighted.replace(new RegExp(phrase, 'g'), 
+                    `<span class="highlight highlight-formal" title="正式短语">${phrase}</span>`);
+            });
+
+            // 重复结构高亮
+            aiPatterns.repetitiveStructures.forEach(struct => {
+                const cleanStruct = struct.replace('，', '');
+                highlighted = highlighted.replace(new RegExp(cleanStruct + '[，,]?', 'g'), 
+                    `<span class="highlight highlight-repetitive" title="重复结构">${cleanStruct}</span>`);
+            });
+
+            // 简单句式标记（检测主谓宾结构的简单句）
+            const sentences = text.split(/[。！？]/);
+            
+            // 情感词高亮（人类特征）
+            humanPatterns.emotions.forEach(word => {
+                highlighted = highlighted.replace(new RegExp(word, 'g'), 
+                    `<span class="highlight highlight-consistent" title="情感表达（人类特征）">${word}</span>`);
+            });
+
+            // 口语高亮
+            humanPatterns.colloquialisms.forEach(word => {
+                if (word.length >= 2) {
+                    highlighted = highlighted.replace(new RegExp(word, 'g'), 
+                        `<span class="highlight highlight-simple" title="口语表达（人类特征）">${word}</span>`);
+                }
+            });
+
+            document.getElementById('highlightedText').innerHTML = highlighted;
+        }
+
+        // 获取分数颜色
+        function getScoreColor(score) {
+            if (score >= 70) return '#ff6b6b';
+            if (score >= 50) return '#ffc107';
+            return '#00ff88';
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', initTestCases);
+    </script>
+</body>
+</html>
