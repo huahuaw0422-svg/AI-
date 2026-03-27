@@ -1418,8 +1418,15 @@
             return '#00ff88';
         }
 
+        // 显示默认示例
+        function showDefaultExample() {
+            initTestCases();
+            // 自动加载第一个测试案例并进行分析
+            loadTestCase(0);
+        }
+
         // 页面加载时初始化
-        document.addEventListener('DOMContentLoaded', initTestCases);
+        document.addEventListener('DOMContentLoaded', showDefaultExample);
     </script>
 </body>
 </html>
